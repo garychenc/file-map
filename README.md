@@ -101,9 +101,9 @@ Gary CHEN : email : gary.chen.c@qq.com
 
 ![Archi-1](https://github.com/garychenc/file-map/blob/master/doc/img/Sys-Arch.png "系统详细架构设计描述")
 
-+ FileMap 接口是系统的入口，其实现类有 RepeatableKeyFileMap 和 UniqueKeyFileMap，两个类大同小异，FileMap 实现包含一个 BinaryFileStore 列表，每个 BinaryFileStore 对象代表一个文件存储集。
++ FileMap 接口是系统的入口，其实现类有 RepeatableKeyFileMap 和 UniqueKeyFileMap，两个类大同小异，FileMap 实现包含一个 BinaryFileStore 列表，每个 BinaryFileStore 对象代表一个文件存储集合。
 
-+ BinaryFileStore 实现了上述描述的基于内存的 Map 类型索引数据结构，索引的每个 IndexBucket 指向一个 FileBaseContentStoreSlave 对象，该对象管理该 IndexBucket 指向的文件存储位置和该位置存储的数据。 FileBaseContentStoreSlave 对象管理着在哪个 Slave Data Store File 的哪个位置存储着真实的数据，并且提供数据的读取、写入方法。一个 Slave Data Store File 可对应多个 FileBaseContentStoreSlave 对象，整个 FileMap 包含多个 Slave Data Store File，数据分布在这些 Slave Data Store File 上，每个文件最大存储 64M 的数据。
++ BinaryFileStore 实现了上述描述的基于内存的 Map 类型索引，索引的每个 IndexBucket 指向一个 FileBaseContentStoreSlave 对象，该对象管理该 IndexBucket 指向的文件存储位置和该位置存储的数据。 FileBaseContentStoreSlave 对象管理着在哪个 Slave Data Store File 的哪个位置存储着真实的数据，并且提供数据的读取、写入方法。一个 Slave Data Store File 可对应多个 FileBaseContentStoreSlave 对象，整个 FileMap 包含多个 Slave Data Store File，数据分布在这些 Slave Data Store File 上，每个文件最大存储 64M 的数据。
 
 + FileBaseContentStoreMaster 对所有 FileBaseContentStoreSlave 和 Slave Data Store File 进行管理，每次 BinaryFileStore 需要存储一个新数据的时候，首先需要向 FileBaseContentStoreMaster 申请一个 FileBaseContentStoreSlave，申请的时候 FileBaseContentStoreMaster 就会在一个空闲的 Slave Data Store File 中为新申请的 FileBaseContentStoreSlave 分配存储空间，并且返回文件存储位置给 Slave，接着将 Slave 纳入 FileBaseContentStoreMaster 进行管理。然后，BinaryFileStore 通过新申请的 FileBaseContentStoreSlave 将数据存储到刚刚分配的文件存储空间中。假如，没有文件可以分配需要的空间，则新建一个文件，在该文件上分配所需空间，并且将该文件纳入管理列表，对文件进行管理。由于 BinaryFileStore 的 IndexBucket 索引只存储 FileBaseContentStoreSlave 的编号，所以每次读取数据的时候，首先需要通过 FileBaseContentStoreMaster 根据 Slave 编号获取 FileBaseContentStoreSlave 对象，然后通过 FileBaseContentStoreSlave 读取其管理的文件位置的数据。
 
